@@ -89,19 +89,30 @@ def create_pyvis_network(G, df, similarity_matrix):
     # ノード同士の反発力を設定
     net.repulsion(node_distance=200, central_gravity=0.2, spring_length=200, spring_strength=0.05, damping=0.09)
 
-    # 言語設定
+    # 言語設定と表示オプション
     net.set_options("""
     var options = {
       "nodes": {
         "font": {
-          "size": 16
+          "size": 16,
+          "face": "sans-serif"
+        },
+        "shadow": {
+          "enabled": true
+        },
+        "shape": "dot",
+        "scaling": {
+          "min": 10,
+          "max": 30
         }
       },
       "edges": {
         "color": {
           "inherit": true
         },
-        "smooth": false
+        "smooth": false,
+        "width": 1.5,
+        "selectionWidth": 2
       },
       "physics": {
         "barnesHut": {
@@ -109,6 +120,11 @@ def create_pyvis_network(G, df, similarity_matrix):
           "springConstant": 0.001
         },
         "minVelocity": 0.75
+      },
+      "interaction": {
+        "hover": true,
+        "tooltipDelay": 200,
+        "hideEdgesOnDrag": true
       }
     }
     """)
@@ -116,21 +132,32 @@ def create_pyvis_network(G, df, similarity_matrix):
     # NetworkXグラフからノードを追加
     for i, node in enumerate(G.nodes()):
         interests_str = ", ".join(df.iloc[i]["interests"])
-        # ノードのタイトルに詳細情報を含める
-        title = f"<b>{df.iloc[i]['name']}</b><br>興味: {interests_str}<br><br><b>類似度</b>:<br>"
 
-        # 他のメンバーとの類似度を追加
+        # 見やすい形式でツールチップを作成
+        name = df.iloc[i]["name"]
+        title = f"【{name}】\n\n■ 興味・関心\n{interests_str}\n\n■ 他メンバーとの類似度"
+
+        # 他のメンバーとの類似度を追加（降順にソート）
+        similarity_list = []
         for j, other_node in enumerate(G.nodes()):
             if i != j:
-                title += f"{df.iloc[j]['name']}: {similarity_matrix[i, j]:.2f}<br>"
+                similarity_list.append((df.iloc[j]["name"], similarity_matrix[i, j]))
 
+        # 類似度の高い順にソート
+        similarity_list.sort(key=lambda x: x[1], reverse=True)
+
+        # ソートされた類似度リストをツールチップに追加
+        for name, sim in similarity_list:
+            title += f"\n{name}: {sim:.2f}"
+
+        # ノードを追加
         net.add_node(i, label=df.iloc[i]["name"], title=title, color="skyblue", size=30)
 
     # エッジを追加
     for edge in G.edges():
         weight = G[edge[0]][edge[1]]["weight"]
         width = weight * 10  # 線の太さを類似度に基づいて設定
-        title = f"類似度: {weight:.2f}"
+        title = f"類似度: {weight:.2f}\n\n{df.iloc[edge[0]]['name']} ↔ {df.iloc[edge[1]]['name']}"
         net.add_edge(edge[0], edge[1], title=title, width=width, color={"opacity": 0.7})
 
     # 一時ファイルに保存して読み込む
@@ -143,8 +170,18 @@ def create_pyvis_network(G, df, similarity_matrix):
         with open(temp_path, "r", encoding="utf-8") as f:
             html_string = f.read()
 
+        # StreamlitのJavascriptポリシーに合わせてHTMLを調整
         # パスを修正：libディレクトリへの参照をmember_map/libに変更
         html_string = html_string.replace('"lib/', '"member_map/lib/')
+
+        # テキストの日本語表示を確実にするためにエンコーディングを明示
+        html_string = html_string.replace("<head>", '<head>\n<meta charset="utf-8">')
+
+        # ツールチップの表示スタイルを調整
+        html_string = html_string.replace(
+            ".vis-tooltip {",
+            ".vis-tooltip {\n  font-family: sans-serif;\n  white-space: pre-line;\n  padding: 8px;\n  border-radius: 4px;\n",
+        )
 
         # 修正したHTMLを一時ファイルに書き戻す
         with open(temp_path, "w", encoding="utf-8") as f:
