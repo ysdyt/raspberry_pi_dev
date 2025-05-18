@@ -136,9 +136,24 @@ def create_pyvis_network(G, df, similarity_matrix):
     # 一時ファイルに保存して読み込む
     with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as tmpfile:
         temp_path = tmpfile.name
+        # デフォルト設定でグラフを保存
         net.save_graph(temp_path)
+
+        # HTMLを読み込む
         with open(temp_path, "r", encoding="utf-8") as f:
             html_string = f.read()
+
+        # パスを修正：libディレクトリへの参照をmember_map/libに変更
+        html_string = html_string.replace('"lib/', '"member_map/lib/')
+
+        # 修正したHTMLを一時ファイルに書き戻す
+        with open(temp_path, "w", encoding="utf-8") as f:
+            f.write(html_string)
+
+        # 修正したファイルを読み込む
+        with open(temp_path, "r", encoding="utf-8") as f:
+            html_string = f.read()
+
         os.unlink(temp_path)  # 一時ファイルを削除
 
     return html_string

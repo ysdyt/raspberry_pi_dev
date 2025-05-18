@@ -1,5 +1,6 @@
 import streamlit as st
 import streamlit.components.v1 as components
+import cv2
 from member_map.main import (
     load_data,
     calculate_interests_similarity,
@@ -9,11 +10,38 @@ from member_map.main import (
     create_pyvis_network,
     create_heatmap,
 )
+from count_person.main import process_default_image
 
 
-# Streamlitアプリ
-def main():
-    st.set_page_config(layout="wide", page_title="会員関係マップ")
+# 人数カウント機能
+def count_person_page():
+    st.title("人数カウント")
+
+    # 信頼度のしきい値設定
+    confidence_threshold = st.slider("信頼度しきい値", 0.0, 1.0, 0.3, 0.01)
+
+    try:
+        # 固定パスの画像を処理（~/Downloads/niho_now3.jpg）
+        img_with_boxes, stats = process_default_image(confidence_threshold)
+
+        # BGR -> RGB変換（Streamlit表示用）
+        img_with_boxes_rgb = cv2.cvtColor(img_with_boxes, cv2.COLOR_BGR2RGB)
+
+        # 検出結果の表示
+        st.image(img_with_boxes_rgb, caption="検出結果", use_container_width=True)
+        st.success(f"信頼度{confidence_threshold * 100}%超の人数: {stats['person_count']}人")
+
+        # 平均信頼度の表示
+        if stats["confidence_scores"]:
+            avg_conf = stats["avg_confidence"]
+            st.info(f"平均信頼度: {avg_conf:.2f} ({avg_conf * 100:.1f}%)")
+
+    except Exception as e:
+        st.error(f"エラーが発生しました: {e}")
+
+
+# 会員マップ機能
+def member_map_page():
     st.title("NIHO会員関係マップ")
 
     # データ読み込み
@@ -95,6 +123,20 @@ def main():
             st.write(f"**興味**: {', '.join(row['interests'])}")
             st.write(f"**自己紹介**: {row['introduction']}")
             st.markdown("---")
+
+
+# Streamlitアプリのメイン関数
+def main():
+    st.set_page_config(layout="wide", page_title="NIHOアプリ")
+
+    # サイドバーでページを選択
+    st.sidebar.title("メニュー")
+    page = st.sidebar.radio("ページを選択", ["会員マップ", "人数カウント"])
+
+    if page == "会員マップ":
+        member_map_page()
+    else:
+        count_person_page()
 
 
 if __name__ == "__main__":
