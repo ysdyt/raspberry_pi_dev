@@ -19,7 +19,7 @@ JAPANESE_FONT = "Hiragino Sans"
 def load_data():
     # 現在のスクリプトの場所を取得
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    csv_path = os.path.join(script_dir, "member.csv")
+    csv_path = os.path.join(script_dir, "member_sample.csv")
 
     # CSVファイルを読み込む
     df = pd.read_csv(csv_path)
