@@ -101,15 +101,17 @@ def process_default_image(confidence_threshold=0.3):
         img_with_boxes: バウンディングボックス付きの画像
         stats: 検出統計情報の辞書
     """
-    # 画像パスを指定（~を展開）
-    image_path = os.path.expanduser("~/Downloads/niho_now3.jpg")
+    # 画像パスを指定（スクリプトと同じディレクトリの niho_now.jpg）
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    image_path = os.path.join(script_dir, "niho_now.jpg")
     return process_image(image_path, confidence_threshold)
 
 
 # スクリプトとして実行される場合のメイン処理
 if __name__ == "__main__":
-    # 画像パスを指定（~を展開）
-    image_path = os.path.expanduser("~/Downloads/niho_now3.jpg")
+    # 画像パスを指定（スクリプトと同じディレクトリの niho_now.jpg）
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    image_path = os.path.join(script_dir, "niho_now.jpg")
     confidence_threshold = 0.3
 
     try:
