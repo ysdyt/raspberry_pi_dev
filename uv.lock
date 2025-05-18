@@ -2,13 +2,13 @@ version = 1
 revision = 2
 requires-python = ">=3.11"
 resolution-markers = [
-    "python_full_version >= '3.12' and sys_platform == 'win32'",
     "python_full_version >= '3.12' and sys_platform == 'darwin'",
     "python_full_version >= '3.12' and platform_machine == 'aarch64' and sys_platform == 'linux'",
+    "python_full_version >= '3.12' and sys_platform == 'win32'",
     "(python_full_version >= '3.12' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version >= '3.12' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32')",
-    "python_full_version < '3.12' and sys_platform == 'win32'",
     "python_full_version < '3.12' and sys_platform == 'darwin'",
     "python_full_version < '3.12' and platform_machine == 'aarch64' and sys_platform == 'linux'",
+    "python_full_version < '3.12' and sys_platform == 'win32'",
     "(python_full_version < '3.12' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version < '3.12' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32')",
 ]
 
@@ -1225,6 +1225,7 @@ dependencies = [
     { name = "japanize-matplotlib" },
     { name = "matplotlib" },
     { name = "networkx" },
+    { name = "opencv-python" },
     { name = "pandas" },
     { name = "pyvis" },
     { name = "scikit-learn" },
@@ -1243,6 +1244,7 @@ requires-dist = [
     { name = "japanize-matplotlib", specifier = ">=1.1.3" },
     { name = "matplotlib", specifier = ">=3.10.3" },
     { name = "networkx", specifier = ">=3.4.2" },
+    { name = "opencv-python", specifier = ">=4.11.0.86" },
     { name = "pandas", specifier = ">=2.2.3" },
     { name = "pyvis", specifier = ">=0.3.2" },
     { name = "scikit-learn", specifier = ">=1.6.1" },
