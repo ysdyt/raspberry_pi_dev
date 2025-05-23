@@ -1,15 +1,53 @@
 from ultralytics import YOLO
 import cv2
 import os
+import time
 from datetime import datetime
+from picamera2 import Picamera2
 
 
-def process_image(image_path, confidence_threshold=0.3):
+def capture_image():
+    """
+    Raspberry Pi カメラで画像を撮影し、指定したパスに保存します
+
+    Args:
+        output_path: 保存する画像のパス
+
+    Returns:
+        撮影した画像のNumPy配列
+    """
+    # Picamera2の初期化
+    picam2 = Picamera2()
+
+    # カメラの設定
+    config = picam2.create_still_configuration()
+    picam2.configure(config)
+
+    # カメラを起動
+    picam2.start()
+
+    # カメラの安定化のために少し待機
+    time.sleep(2)
+
+    # 画像を撮影
+    img_array = picam2.capture_array()
+
+    # カメラを停止
+    picam2.stop()
+
+    # BGR形式に変換（YOLOとOpenCVはBGR形式を使用）
+    if len(img_array.shape) == 3 and img_array.shape[2] == 3:
+        img_array_bgr = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
+
+    return img_array_bgr
+
+
+def process_image(img_array_bgr, confidence_threshold=0.3):
     """
     画像内の人物を検出し、バウンディングボックスを描画した画像と統計情報を返します
 
     Args:
-        image_path: 処理する画像のパス
+        img_array_bgr: 処理する画像のNumPy配列
         confidence_threshold: 検出の信頼度しきい値
 
     Returns:
@@ -20,19 +58,13 @@ def process_image(image_path, confidence_threshold=0.3):
     model_path = os.path.join(os.path.dirname(__file__), "yolo11n.pt")
     model = YOLO(model_path)
 
-    # 画像を読み込む
-    img = cv2.imread(image_path)
-
-    if img is None:
-        raise ValueError(f"エラー: 画像 {image_path} を読み込めませんでした")
-
     # 推論を実行
-    results = model(img)
+    results = model(img_array_bgr)
 
     # 人を検出（クラス0は通常「person」を表す）
     person_count = 0
     confidence_scores = []  # 信頼度スコアを保存するリスト
-    img_with_boxes = img.copy()  # 元の画像をコピー
+    img_with_boxes = img_array_bgr.copy()  # 元の画像をコピー
 
     for result in results:
         boxes = result.boxes
@@ -90,33 +122,26 @@ def process_image(image_path, confidence_threshold=0.3):
     return img_with_boxes, stats
 
 
-def process_default_image(confidence_threshold=0.3):
-    """
-    デフォルトの画像を処理します。固定パスの画像を使用。
-
-    Args:
-        confidence_threshold: 検出の信頼度しきい値
-
-    Returns:
-        img_with_boxes: バウンディングボックス付きの画像
-        stats: 検出統計情報の辞書
-    """
-    # 画像パスを指定（スクリプトと同じディレクトリの niho_now.jpg）
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    image_path = os.path.join(script_dir, "niho_now.jpg")
-    return process_image(image_path, confidence_threshold)
-
-
 # スクリプトとして実行される場合のメイン処理
 if __name__ == "__main__":
-    # 画像パスを指定（スクリプトと同じディレクトリの niho_now.jpg）
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    image_path = os.path.join(script_dir, "niho_now.jpg")
     confidence_threshold = 0.3
 
     try:
+        # カメラで撮影
+        captured_img = capture_image()
         # 画像処理
-        processed_image, stats = process_image(image_path, confidence_threshold)
+        processed_image, stats = process_image(captured_img, confidence_threshold)
+
+        # ./processed_img以下に結果画像を保存
+        output_dir = "./processed_img"
+        # ディレクトリが存在しない場合は作成
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_img_path = os.path.join(output_dir, f"processed_{timestamp}.jpg")
+
+        cv2.imwrite(output_img_path, processed_image)
 
         # 結果出力
         print(f"信頼度{confidence_threshold * 100}%超の人数: {stats['person_count']}人")
@@ -125,5 +150,7 @@ if __name__ == "__main__":
         if stats["confidence_scores"]:
             avg_conf = stats["avg_confidence"]
             print(f"平均信頼度: {avg_conf:.2f} ({avg_conf * 100:.1f}%)")
+
+        print(f"結果画像を保存しました: {output_img_path}")
     except Exception as e:
         print(f"エラーが発生しました: {e}")
