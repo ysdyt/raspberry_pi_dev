@@ -2,39 +2,53 @@ from ultralytics import YOLO
 import cv2
 import os
 import time
+import numpy as np
 from datetime import datetime
-from picamera2 import Picamera2
+import platform
+
+# システム環境に応じてインポートを分岐
+IS_RASPBERRY_PI = (
+    platform.system() == "Linux"
+    and os.path.exists("/sys/firmware/devicetree/base/model")
+    and "Raspberry Pi" in open("/sys/firmware/devicetree/base/model").read()
+)
+
+if IS_RASPBERRY_PI:
+    from picamera2 import Picamera2
 
 
 def capture_image():
     """
     Raspberry Pi カメラで画像を撮影し、指定したパスに保存します
 
-    Args:
-        output_path: 保存する画像のパス
-
     Returns:
         撮影した画像のNumPy配列
     """
+    if not IS_RASPBERRY_PI:
+        # 開発環境では、テスト用の画像を読み込む
+        print("開発環境では、テスト用の画像を使用します")
+        test_image_path = os.path.join(os.path.dirname(__file__), "test_image.jpg")
+        if os.path.exists(test_image_path):
+            return cv2.imread(test_image_path)
+        else:
+            # テスト画像がなければ黒い画像を生成
+            print(f"テスト画像 {test_image_path} が見つかりません。黒い画像を生成します。")
+            return np.zeros((480, 640, 3), dtype=np.uint8)
+
+    # Raspberry Pi環境での処理
     # Picamera2の初期化
     picam2 = Picamera2()
-
     # カメラの設定
     config = picam2.create_still_configuration()
     picam2.configure(config)
-
     # カメラを起動
     picam2.start()
-
     # カメラの安定化のために少し待機
     time.sleep(2)
-
     # 画像を撮影
     img_array = picam2.capture_array()
-
     # カメラを停止
     picam2.stop()
-
     # BGR形式に変換（YOLOとOpenCVはBGR形式を使用）
     if len(img_array.shape) == 3 and img_array.shape[2] == 3:
         img_array_bgr = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
