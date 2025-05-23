@@ -10,6 +10,7 @@ dependencies = [
     "networkx>=3.4.2",
     "opencv-python-headless>=4.11.0.86",
     "pandas>=2.2.3",
+    "picamera2>=0.3.27",
     "pyvis>=0.3.2",
     "scikit-learn>=1.6.1",
     "streamlit>=1.45.1",
