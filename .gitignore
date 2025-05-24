@@ -4,8 +4,8 @@ static/
 exp
 .env.yaml
 # count_person/processed_imgディレクトリは管理するが中身は無視する
-count_person/processed_img/*
-!count_person/processed_img/.gitkeep
+count_person/captured_img/*
+!count_person/captured_img/.gitkeep
 # ----------------------------------------------------------------
 # 以下はGitHub公式テンプレート
 # https://github.com/github/gitignore/blob/master/Python.gitignore

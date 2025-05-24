@@ -5,8 +5,9 @@ import time
 import numpy as np
 from datetime import datetime
 import platform
+import glob  # 追加
 
-# システム環境に応じてインポートを分岐
+# 実行端末がRaspberry Piかどうかを判定
 IS_RASPBERRY_PI = (
     platform.system() == "Linux"
     and os.path.exists("/sys/firmware/devicetree/base/model")
@@ -14,7 +15,13 @@ IS_RASPBERRY_PI = (
 )
 
 if IS_RASPBERRY_PI:
-    from picamera2 import Picamera2
+    try:
+        from picamera2 import Picamera2
+
+        PICAMERA_AVAILABLE = True
+    except ImportError:
+        print("picamera2モジュールをインポートできませんでした。カメラ機能は無効です。")
+        PICAMERA_AVAILABLE = False
 
 
 def capture_image():
@@ -22,18 +29,33 @@ def capture_image():
     Raspberry Pi カメラで画像を撮影し、指定したパスに保存します
 
     Returns:
-        撮影した画像のNumPy配列
+        撮影した画像のNumPy配列と保存したファイルパス
     """
-    if not IS_RASPBERRY_PI:
+    # captured_imgディレクトリが存在しない場合は作成
+    output_dir = "./captured_img"
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    # 撮影時間をファイル名として保存
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_img_path = os.path.join(output_dir, f"capture_{timestamp}.jpg")
+
+    # 実行端末がRaspberry Piでない場合の処理
+    if not IS_RASPBERRY_PI or not PICAMERA_AVAILABLE:
         # 開発環境では、テスト用の画像を読み込む
         print("開発環境では、テスト用の画像を使用します")
         test_image_path = os.path.join(os.path.dirname(__file__), "test_image.jpg")
         if os.path.exists(test_image_path):
-            return cv2.imread(test_image_path)
+            img_test = cv2.imread(test_image_path)
+            # テスト画像をcaptured_imgに保存
+            cv2.imwrite(output_img_path, img_test)
+            return img_test, output_img_path
         else:
             # テスト画像がなければ黒い画像を生成
             print(f"テスト画像 {test_image_path} が見つかりません。黒い画像を生成します。")
-            return np.zeros((480, 640, 3), dtype=np.uint8)
+            img_black = np.zeros((480, 640, 3), dtype=np.uint8)
+            cv2.imwrite(output_img_path, img_black)
+            return img_black, output_img_path
 
     # Raspberry Pi環境での処理
     # Picamera2の初期化
@@ -53,7 +75,39 @@ def capture_image():
     if len(img_array.shape) == 3 and img_array.shape[2] == 3:
         img_array_bgr = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
 
-    return img_array_bgr
+    # 撮影した画像を保存
+    cv2.imwrite(output_img_path, img_array_bgr)
+    print(f"撮影画像を保存しました: {output_img_path}")
+
+    # 撮影した画像を返すが、基本は使わない。保存された画像を使用する。
+    # return img_array_bgr, output_img_path
+
+
+def get_latest_captured_image():
+    """
+    captured_imgフォルダから最新の画像を取得します
+
+    Returns:
+        最新の画像のNumPy配列とそのファイルパス、画像がない場合はNone, None
+    """
+    output_dir = "./captured_img"
+    if not os.path.exists(output_dir):
+        print(f"{output_dir}フォルダが存在しません。")
+        return None, None
+
+    # ファイル一覧を取得してソート
+    files = glob.glob(os.path.join(output_dir, "capture_*.jpg"))
+    if not files:
+        print(f"{output_dir}フォルダに画像がありません。")
+        return None, None
+
+    # ファイル名でソート（日付形式なので、最新のものは最後）
+    latest_file = max(files, key=os.path.getctime)
+
+    # 画像を読み込み
+    img = cv2.imread(latest_file)
+
+    return img, latest_file
 
 
 def process_image(img_array_bgr, confidence_threshold=0.3):
@@ -138,33 +192,5 @@ def process_image(img_array_bgr, confidence_threshold=0.3):
 
 # スクリプトとして実行される場合のメイン処理
 if __name__ == "__main__":
-    confidence_threshold = 0.3
-
-    try:
-        # カメラで撮影
-        captured_img = capture_image()
-        # 画像処理
-        processed_image, stats = process_image(captured_img, confidence_threshold)
-
-        # ./processed_img以下に結果画像を保存
-        output_dir = "./processed_img"
-        # ディレクトリが存在しない場合は作成
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
-
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_img_path = os.path.join(output_dir, f"processed_{timestamp}.jpg")
-
-        cv2.imwrite(output_img_path, processed_image)
-
-        # 結果出力
-        print(f"信頼度{confidence_threshold * 100}%超の人数: {stats['person_count']}人")
-
-        # 統計情報
-        if stats["confidence_scores"]:
-            avg_conf = stats["avg_confidence"]
-            print(f"平均信頼度: {avg_conf:.2f} ({avg_conf * 100:.1f}%)")
-
-        print(f"結果画像を保存しました: {output_img_path}")
-    except Exception as e:
-        print(f"エラーが発生しました: {e}")
+    # capture_image()を実行し、画像を保存するだけ
+    capture_image()

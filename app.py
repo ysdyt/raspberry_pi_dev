@@ -1,6 +1,9 @@
 import streamlit as st
 import streamlit.components.v1 as components
 import cv2
+import os
+import re
+from datetime import datetime
 from member_map.main import (
     load_data,
     calculate_interests_similarity,
@@ -10,7 +13,7 @@ from member_map.main import (
     create_pyvis_network,
     create_heatmap,
 )
-from count_person.main import capture_image, process_image
+from count_person.main import process_image, get_latest_captured_image
 
 
 # 人数カウント機能
@@ -20,35 +23,44 @@ def count_person_page():
     # 信頼度のしきい値設定
     confidence_threshold = st.slider("信頼度しきい値", 0.0, 1.0, 0.3, 0.01)
 
-    col1, col2 = st.columns([3, 1])
-
-    with col2:
-        if st.button("撮影", use_container_width=True):
-            with st.spinner("カメラで撮影中..."):
-                try:
-                    # カメラで撮影
-                    captured_img = capture_image()
-
-                    # セッションステートに保存
-                    st.session_state.captured_img = captured_img
-                    # st.session_state.captured_img_path = temp_img_path
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"撮影中にエラーが発生しました: {e}")
-
     try:
-        # 撮影済みの画像があれば処理する
-        if "captured_img" in st.session_state:
-            img_array_bgr = st.session_state.captured_img
+        # 最新の撮影画像を取得
+        img_array_bgr, img_path = get_latest_captured_image()
+
+        if img_array_bgr is not None:
             # 画像処理
             img_with_boxes, stats = process_image(img_array_bgr, confidence_threshold)
 
             # BGR -> RGB変換（Streamlit表示用）
             img_with_boxes_rgb = cv2.cvtColor(img_with_boxes, cv2.COLOR_BGR2RGB)
 
+            # ファイル名から撮影日時を抽出
+            filename = os.path.basename(img_path)
+            datetime_str = None
+
+            # ファイル名のパターン: capture_YYYYMMDD_HHMMSS.jpg
+            match = re.search(r"capture_(\d{8})_(\d{6})\.jpg", filename)
+            if match:
+                date_part = match.group(1)  # YYYYMMDD
+                time_part = match.group(2)  # HHMMSS
+
+                # 日付形式に変換
+                try:
+                    capture_datetime = datetime.strptime(f"{date_part}_{time_part}", "%Y%m%d_%H%M%S")
+                    datetime_str = capture_datetime.strftime("%Y年%m月%d日 %H:%M:%S")
+
+                    # 曜日を日本語で取得
+                    weekday_jp = ["月", "火", "水", "木", "金", "土", "日"][capture_datetime.weekday()]
+                    datetime_str += f" ({weekday_jp})"
+                except ValueError:
+                    datetime_str = "日時形式が不正です"
+
+            # 撮影日時の表示
+            if datetime_str:
+                st.markdown(f"**撮影日時**: {datetime_str}")
+
             # 検出結果の表示
-            with col1:
-                st.image(img_with_boxes_rgb, caption="検出結果", use_container_width=True)
+            st.image(img_with_boxes_rgb, caption=f"検出結果: {os.path.basename(img_path)}", use_container_width=True)
 
             # 結果表示
             st.success(f"信頼度{confidence_threshold * 100}%超の人数: {stats['person_count']}人")
@@ -57,10 +69,9 @@ def count_person_page():
             if stats["confidence_scores"]:
                 avg_conf = stats["avg_confidence"]
                 st.info(f"平均信頼度: {avg_conf:.2f} ({avg_conf * 100:.1f}%)")
-
         else:
-            # 初回表示時や画像がない場合
-            col1.info("右の「撮影」ボタンをクリックして、カメラで画像を撮影してください。")
+            # 画像がない場合
+            st.error("保存済みの画像が見つかりません。captured_imgフォルダに画像を配置してください。")
 
     except Exception as e:
         st.error(f"エラーが発生しました: {e}")
