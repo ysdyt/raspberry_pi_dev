@@ -1,0 +1,2 @@
+# 30minに一度、shファイルの中身を実施
+*/30 * * * * /home/ysdyt/git_repositories/raspberry_pi_dev/cron_capture_job.sh >> /home/ysdyt/cron.log 2>&1
