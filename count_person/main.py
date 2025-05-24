@@ -7,6 +7,9 @@ from datetime import datetime
 import platform
 import glob  # 追加
 
+# アプリケーションのルートディレクトリを取得
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
 # 実行端末がRaspberry Piかどうかを判定
 IS_RASPBERRY_PI = (
     platform.system() == "Linux"
@@ -32,7 +35,7 @@ def capture_image():
         撮影した画像のNumPy配列と保存したファイルパス
     """
     # captured_imgディレクトリが存在しない場合は作成
-    output_dir = "./captured_img"
+    output_dir = os.path.join(os.path.dirname(__file__), "captured_img")
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
@@ -90,10 +93,12 @@ def get_latest_captured_image():
     Returns:
         最新の画像のNumPy配列とそのファイルパス、画像がない場合はNone, None
     """
-    output_dir = "./captured_img"
+    # count_person/captured_img ディレクトリを参照
+    output_dir = os.path.join(os.path.dirname(__file__), "captured_img")
+
     if not os.path.exists(output_dir):
-        print(f"{output_dir}フォルダが存在しません。")
-        return None, None
+        os.makedirs(output_dir)
+        print(f"ディレクトリを作成しました: {output_dir}")
 
     # ファイル一覧を取得してソート
     files = glob.glob(os.path.join(output_dir, "capture_*.jpg"))
