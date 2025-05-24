@@ -26,6 +26,9 @@ raspberry = [
     "picamera2>=0.3.27",
 ]
 
+[tool.setuptools]
+packages = ["lib", "member_map", "count_person"]
+
 [tool.ruff]
 # 一般的に無視されるディレクトリを除外します。
 exclude = [
