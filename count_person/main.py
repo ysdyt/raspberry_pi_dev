@@ -10,15 +10,25 @@ import glob  # 追加
 # アプリケーションのルートディレクトリを取得
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
-# 実行端末がRaspberry Piかどうかを判定
-IS_RASPBERRY_PI = (
-    platform.system() == "Linux"
-    and os.path.exists("/sys/firmware/devicetree/base/model")
-    and "Raspberry Pi" in open("/sys/firmware/devicetree/base/model").read()
+# クラウド環境かどうかを判定する
+IS_CLOUD_ENV = (
+    os.environ.get("STREAMLIT_RUNTIME_ENVIRONMENT") == "cloud"
+    or os.environ.get("STREAMLIT_CLOUD", "0") == "1"
+    or not os.path.exists("/sys/firmware/devicetree/base")
 )
 
-# クラウド環境かどうかを判定する
-IS_CLOUD_ENV = os.environ.get("STREAMLIT_CLOUD", "0") == "1" or not os.path.exists("/sys/firmware/devicetree/base")
+# 実行端末がRaspberry Piかどうかを判定
+IS_RASPBERRY_PI = False
+if not IS_CLOUD_ENV:
+    try:
+        IS_RASPBERRY_PI = (
+            platform.system() == "Linux"
+            and os.path.exists("/sys/firmware/devicetree/base/model")
+            and "Raspberry Pi" in open("/sys/firmware/devicetree/base/model").read()
+        )
+    except Exception as e:
+        print(f"Raspberry Pi判定中にエラーが発生しました: {e}")
+        pass
 
 # Raspberry Pi環境でない場合はpicamera2のインポートをスキップ
 PICAMERA_AVAILABLE = False
