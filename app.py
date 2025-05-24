@@ -10,7 +10,7 @@ from member_map.main import (
     create_pyvis_network,
     create_heatmap,
 )
-from count_person.main import process_default_image
+from count_person.main import capture_image, process_image
 
 
 # 人数カウント機能
@@ -20,21 +20,47 @@ def count_person_page():
     # 信頼度のしきい値設定
     confidence_threshold = st.slider("信頼度しきい値", 0.0, 1.0, 0.3, 0.01)
 
+    col1, col2 = st.columns([3, 1])
+
+    with col2:
+        if st.button("撮影", use_container_width=True):
+            with st.spinner("カメラで撮影中..."):
+                try:
+                    # カメラで撮影
+                    captured_img = capture_image()
+
+                    # セッションステートに保存
+                    st.session_state.captured_img = captured_img
+                    # st.session_state.captured_img_path = temp_img_path
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"撮影中にエラーが発生しました: {e}")
+
     try:
-        # 固定パスの画像を処理（~/Downloads/niho_now3.jpg）
-        img_with_boxes, stats = process_default_image(confidence_threshold)
+        # 撮影済みの画像があれば処理する
+        if "captured_img" in st.session_state:
+            img_array_bgr = st.session_state.captured_img
+            # 画像処理
+            img_with_boxes, stats = process_image(img_array_bgr, confidence_threshold)
 
-        # BGR -> RGB変換（Streamlit表示用）
-        img_with_boxes_rgb = cv2.cvtColor(img_with_boxes, cv2.COLOR_BGR2RGB)
+            # BGR -> RGB変換（Streamlit表示用）
+            img_with_boxes_rgb = cv2.cvtColor(img_with_boxes, cv2.COLOR_BGR2RGB)
 
-        # 検出結果の表示
-        st.image(img_with_boxes_rgb, caption="検出結果", use_container_width=True)
-        st.success(f"信頼度{confidence_threshold * 100}%超の人数: {stats['person_count']}人")
+            # 検出結果の表示
+            with col1:
+                st.image(img_with_boxes_rgb, caption="検出結果", use_container_width=True)
 
-        # 平均信頼度の表示
-        if stats["confidence_scores"]:
-            avg_conf = stats["avg_confidence"]
-            st.info(f"平均信頼度: {avg_conf:.2f} ({avg_conf * 100:.1f}%)")
+            # 結果表示
+            st.success(f"信頼度{confidence_threshold * 100}%超の人数: {stats['person_count']}人")
+
+            # 平均信頼度の表示
+            if stats["confidence_scores"]:
+                avg_conf = stats["avg_confidence"]
+                st.info(f"平均信頼度: {avg_conf:.2f} ({avg_conf * 100:.1f}%)")
+
+        else:
+            # 初回表示時や画像がない場合
+            col1.info("右の「撮影」ボタンをクリックして、カメラで画像を撮影してください。")
 
     except Exception as e:
         st.error(f"エラーが発生しました: {e}")
