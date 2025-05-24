@@ -1,0 +1,4 @@
+# count_person/main.pyを5分ごとに実行
+# >> /home/pi/person_count.log 2>&1 で実行ログを出力している
+# uvの環境をアクティブにしてから実行する
+*/5 * * * * cd /Users/ysdyt/git_repositories/raspberry_pi_dev && source ~/.venvs/uv/bin/activate && python3 count_person/main.py >> /home/pi/person_count.log 2>&1
