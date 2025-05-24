@@ -17,14 +17,18 @@ IS_RASPBERRY_PI = (
     and "Raspberry Pi" in open("/sys/firmware/devicetree/base/model").read()
 )
 
-if IS_RASPBERRY_PI:
+# クラウド環境かどうかを判定する
+IS_CLOUD_ENV = os.environ.get("STREAMLIT_CLOUD", "0") == "1" or not os.path.exists("/sys/firmware/devicetree/base")
+
+# Raspberry Pi環境でない場合はpicamera2のインポートをスキップ
+PICAMERA_AVAILABLE = False
+if IS_RASPBERRY_PI and not IS_CLOUD_ENV:
     try:
         from picamera2 import Picamera2
 
         PICAMERA_AVAILABLE = True
     except ImportError:
         print("picamera2モジュールをインポートできませんでした。カメラ機能は無効です。")
-        PICAMERA_AVAILABLE = False
 
 
 def capture_image():
